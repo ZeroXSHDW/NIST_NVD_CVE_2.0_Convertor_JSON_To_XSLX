@@ -14,6 +14,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
       - name: Syntax check
         run: python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
+      - name: Unit tests
+        run: python -m pytest tests/ -q

@@ -1,23 +1,23 @@
-# 🛡️ NIST NVD CVE 2.0 to XLSX Converter
+# NIST NVD CVE 2.0 to XLSX Converter
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![NVD Feed](https://img.shields.io/badge/NVD-CVE_2.0-orange.svg)](https://nvd.nist.gov/vuln/data-feeds)
 
-A robust, enterprise-grade toolkit for automating the download, extraction, and compilation of the entire NIST National Vulnerability Database (NVD) into a single, highly-structured Excel spreadsheet.
+Toolkit for downloading NIST NVD CVE 2.0 JSON feeds and compiling them into a structured Excel workbook with annual sheets and a master index.
 
 > **Spelling note:** The GitHub repository name keeps the historical `Convertor` / `XSLX` spellings. Preferred English spellings are **Converter** and **XLSX** (as used throughout this README and the scripts).
 
-## ✨ Features
+## Features
 
-- 📥 **Automated Data Fetching**: Scrapes and downloads all CVE 2.0 JSON feeds (2002–Present).
-- ⚡ **Smart Caching**: Skips re-downloading historical yearly archives to save bandwidth.
-- 🔄 **Incremental Updates**: Always fetches the latest `modified` and `recent` vulnerability feeds.
-- 📊 **Beautiful Excel Output**: Generates an indexed XLSX with annual sheets and a searchable master index.
-- 🛡️ **Integrity Verification**: Built-in validation suite ensuring 100% data accuracy against source JSON.
-- 🤖 **Automation Ready**: Designed for use in CI/CD pipelines and Power Automate workflows.
+- **Automated data fetching**: Downloads CVE 2.0 JSON feeds (2002–present).
+- **Smart caching**: Skips re-downloading historical yearly archives.
+- **Incremental updates**: Always fetches the latest `modified` and `recent` feeds.
+- **Excel output**: Indexed XLSX with annual sheets and a searchable master index.
+- **Integrity verification**: Validates the workbook against source JSON.
+- **Automation ready**: Suitable for CI/CD and scheduled runs.
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TD
@@ -30,47 +30,54 @@ graph TD
     G -->|Result| H{100% Valid?}
 ```
 
-## 🚀 Quick Start
-
-### 1. Installation
-
-Clone the repository and install the dependencies:
+## Quick Start
 
 ```bash
+# 1. Install runtime deps
 pip install -r requirements.txt
-```
 
-### 2. Run the Full Pipeline
-
-Execute the master orchestrator to handle the entire process automatically:
-
-```bash
+# 2. Run the full pipeline (download → convert → validate)
+#    Note: run_pipeline.py takes no CLI flags; it runs all three stages in order.
 python run_pipeline.py
 ```
 
-## 🛠️ Individual Components
+Output workbook: `NIST_CVE_Compiled.xlsx` in the project root.
 
-If you need more control, you can run the components individually:
+### Optional: unit tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests/ -q
+```
+
+## Individual Components
 
 | Script | Purpose |
 | :--- | :--- |
 | `download_nvd.py` | Fetches and extracts the latest data feeds from NIST. |
-| `json_to_xlsx.py` | Compiles the extracted JSON files into a structured Excel workbook. |
+| `json_to_xlsx.py` | Compiles extracted JSON files into a structured Excel workbook. |
 | `validate_xlsx.py` | Validates the final Excel file against the source JSON data. |
+| `run_pipeline.py` | Runs the three scripts above in sequence. |
 
-## 📅 Data Structure
+Run a single stage the same way:
+
+```bash
+python download_nvd.py
+python json_to_xlsx.py
+python validate_xlsx.py
+```
+
+## Data Structure
 
 The generated `NIST_CVE_Compiled.xlsx` includes:
-- **INDEX Sheet**: A rapid-lookup summary of all CVEs (ID, Year, Severity, Score, Summary).
-- **Annual Sheets (2002-2026)**: Detailed vulnerability data including descriptions, timestamps, and full CVSS vectors.
 
-## 🤝 Contributing
+- **INDEX sheet**: Rapid-lookup summary (ID, Year, Severity, Score, Summary).
+- **Annual sheets (2002–present)**: Descriptions, timestamps, and CVSS vectors.
+
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📜 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-*Maintained with ❤️ for the Cybersecurity community.*
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
