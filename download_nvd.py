@@ -25,6 +25,41 @@ USER_AGENT = (
     "research/data-pipeline)"
 )
 
+
+def collect_feed_links(html: str, base_url: str = BASE_URL) -> list[str]:
+    """Parse feed page HTML and return unique CVE 2.0 JSON ZIP URLs."""
+    if not html or not html.strip():
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    links: list[str] = []
+    for link in soup.find_all("a", href=True):
+        href = link["href"]
+        if "nvdcve-2.0-" in href and href.endswith(".json.zip"):
+            if not href.startswith("http"):
+                href = f"{base_url.rstrip('/')}/{href.lstrip('/')}"
+            links.append(href)
+    return sorted(set(links))
+
+
+def extract_zip_safely(zip_path: Path, dest_dir: Path) -> bool:
+    """
+    Extract a ZIP if it contains at least one member.
+    Returns False for missing, empty, or corrupt archives.
+    """
+    if not zip_path.is_file() or zip_path.stat().st_size == 0:
+        return False
+    try:
+        with zipfile.ZipFile(zip_path, "r") as z:
+            names = z.namelist()
+            if not names:
+                return False
+            z.extractall(dest_dir)
+        return True
+    except (zipfile.BadZipFile, OSError):
+        return False
+
+
 def download_and_extract_feeds():
     """
     Downloads and extracts all CVE 2.0 JSON ZIP feeds from the NVD website.
@@ -46,33 +81,21 @@ def download_and_extract_feeds():
     except Exception as e:
         print(f"Error fetching the feeds page: {e}")
         return False
-    
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    # We are looking for links that match nvdcve-2.0-.*\.json\.zip
-    links = []
-    for link in soup.find_all('a', href=True):
-        href = link['href']
-        if "nvdcve-2.0-" in href and href.endswith(".json.zip"):
-            if not href.startswith("http"):
-                href = f"{BASE_URL.rstrip('/')}/{href.lstrip('/')}"
-            links.append(href)
-    
-    links = sorted(list(set(links)))
-    
+
+    links = collect_feed_links(response.text)
     if not links:
         print("No CVE 2.0 JSON ZIP feeds found on the page.")
         return False
 
     print(f"Found {len(links)} feed ZIPs. Starting download/extraction...")
-    
+
     success_count = 0
     for url in links:
         zip_name = url.split("/")[-1]
         local_zip_path = TARGET_DIR / zip_name
         json_name = zip_name.replace(".zip", "")
         local_json_path = TARGET_DIR / json_name
-        
+
         # Logic from user: Always re-download "modified" and "recent".
         # Skip yearly files if both ZIP and JSON exist.
         is_dynamic = "modified" in zip_name or "recent" in zip_name
@@ -80,21 +103,20 @@ def download_and_extract_feeds():
             print(f"✓ Skipping {zip_name} (historical file already exists)")
             success_count += 1
             continue
-        
+
         print(f"↓ Downloading {zip_name}...", end=" ", flush=True)
         try:
             r = requests.get(url, headers=headers, stream=True, timeout=60)
             r.raise_for_status()
-            
-            # Save ZIP to disk (useful for the "exists" check next time)
+
             with open(local_zip_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-            
-            # Extract
-            with zipfile.ZipFile(local_zip_path, "r") as z:
-                z.extractall(TARGET_DIR)
-                
+
+            if not extract_zip_safely(local_zip_path, TARGET_DIR):
+                print("Failed! Error: empty or corrupt ZIP")
+                continue
+
             print("Done.")
             success_count += 1
         except Exception as e:
@@ -103,6 +125,7 @@ def download_and_extract_feeds():
     print(f"\nSummary: {success_count}/{len(links)} feeds processed successfully.")
     print(f"Data directory: {TARGET_DIR.absolute()}")
     return success_count == len(links)
+
 
 if __name__ == "__main__":
     download_and_extract_feeds()

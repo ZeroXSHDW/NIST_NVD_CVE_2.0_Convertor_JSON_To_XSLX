@@ -1,15 +1,23 @@
-"""Unit tests for json_to_xlsx extract helpers."""
+"""Unit tests for json_to_xlsx extract helpers and edge-case feeds."""
 
 import json
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
+from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from json_to_xlsx import clean_text, extract_entry  # noqa: E402
+from download_nvd import collect_feed_links, extract_zip_safely  # noqa: E402
+from json_to_xlsx import (  # noqa: E402
+    build_workbook,
+    clean_text,
+    extract_entry,
+    load_vulnerabilities,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_cve.json"
 
@@ -53,3 +61,130 @@ def test_extract_entry_empty_cve():
     assert extracted["baseScore"] == ""
     assert extracted["severity"] == ""
     assert extracted["vectorString"] == ""
+
+
+def test_extract_entry_missing_and_null_fields():
+    extracted = extract_entry(
+        {
+            "id": None,
+            "descriptions": None,
+            "metrics": None,
+            "published": None,
+            "lastModified": None,
+        }
+    )
+    assert extracted["cve_id"] == ""
+    assert extracted["description"] == ""
+    assert extracted["published"] == ""
+    assert extracted["lastModified"] == ""
+    assert extracted["baseScore"] == ""
+
+
+def test_extract_entry_non_dict_and_malformed_metrics():
+    assert extract_entry(None)["cve_id"] == ""
+    extracted = extract_entry(
+        {
+            "id": "CVE-2020-1",
+            "descriptions": [{"lang": "en", "value": "ok"}, "skip-me"],
+            "metrics": {
+                "cvssMetricV31": [None, {"type": "Primary", "cvssData": None}],
+            },
+        }
+    )
+    assert extracted["cve_id"] == "CVE-2020-1"
+    assert extracted["description"] == "ok"
+    assert extracted["baseScore"] == ""
+    assert extracted["vectorString"] == ""
+
+
+def test_collect_feed_links_empty_and_relative(tmp_path):
+    assert collect_feed_links("") == []
+    assert collect_feed_links("<html></html>") == []
+    html = """
+    <a href="/feeds/json/cve/2.0/nvdcve-2.0-2024.json.zip">2024</a>
+    <a href="https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-modified.json.zip">mod</a>
+    <a href="/feeds/json/cve/1.1/nvdcve-1.1-2024.json.zip">ignore</a>
+    """
+    links = collect_feed_links(html)
+    assert len(links) == 2
+    assert all(link.startswith("https://nvd.nist.gov/") for link in links)
+    assert any(link.endswith("nvdcve-2.0-2024.json.zip") for link in links)
+
+
+def test_extract_zip_safely_empty_and_corrupt(tmp_path):
+    dest = tmp_path / "out"
+    dest.mkdir()
+    missing = tmp_path / "missing.zip"
+    assert extract_zip_safely(missing, dest) is False
+
+    empty = tmp_path / "empty.zip"
+    empty.write_bytes(b"")
+    assert extract_zip_safely(empty, dest) is False
+
+    corrupt = tmp_path / "corrupt.zip"
+    corrupt.write_bytes(b"not-a-zip")
+    assert extract_zip_safely(corrupt, dest) is False
+
+    good = tmp_path / "good.zip"
+    with zipfile.ZipFile(good, "w") as zf:
+        zf.writestr("nvdcve-2.0-2024.json", '{"vulnerabilities":[]}')
+    assert extract_zip_safely(good, dest) is True
+    assert (dest / "nvdcve-2.0-2024.json").is_file()
+
+
+def test_load_vulnerabilities_empty_and_invalid(tmp_path):
+    empty_feed = tmp_path / "nvdcve-2.0-2024.json"
+    empty_feed.write_text('{"vulnerabilities": []}', encoding="utf-8")
+    assert load_vulnerabilities(empty_feed) == []
+
+    missing_key = tmp_path / "nvdcve-2.0-2023.json"
+    missing_key.write_text("{}", encoding="utf-8")
+    assert load_vulnerabilities(missing_key) == []
+
+    bad_type = tmp_path / "nvdcve-2.0-2022.json"
+    bad_type.write_text('{"vulnerabilities": {}}', encoding="utf-8")
+    assert load_vulnerabilities(bad_type) == []
+
+    corrupt = tmp_path / "nvdcve-2.0-2021.json"
+    corrupt.write_text("{not-json", encoding="utf-8")
+    assert load_vulnerabilities(corrupt) == []
+
+
+def test_build_workbook_empty_dir_and_empty_feed(tmp_path):
+    empty_dir = tmp_path / "empty_data"
+    empty_dir.mkdir()
+    out = tmp_path / "empty.xlsx"
+    build_workbook(data_dir=empty_dir, output_file=out)
+    assert out.is_file()
+    wb = load_workbook(out)
+    try:
+        assert wb.sheetnames == ["INDEX"]
+        assert wb["INDEX"].cell(1, 1).value == "CVE ID"
+    finally:
+        wb.close()
+
+    data_dir = tmp_path / "feeds"
+    data_dir.mkdir()
+    (data_dir / "nvdcve-2.0-2024.json").write_text(
+        json.dumps(
+            {
+                "vulnerabilities": [
+                    {},
+                    {"cve": None},
+                    {"cve": {"id": "CVE-2024-42", "descriptions": [], "metrics": {}}},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    out2 = tmp_path / "partial.xlsx"
+    build_workbook(data_dir=data_dir, output_file=out2)
+    wb2 = load_workbook(out2)
+    try:
+        assert "INDEX" in wb2.sheetnames
+        assert "2024" in wb2.sheetnames
+        # three rows attempted (header + 3 vulns including blanks)
+        assert wb2["2024"].max_row == 4
+        assert wb2["2024"].cell(4, 1).value == "CVE-2024-42"
+    finally:
+        wb2.close()
