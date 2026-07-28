@@ -6,6 +6,8 @@
 
 A robust, enterprise-grade toolkit for automating the download, extraction, and compilation of the entire NIST National Vulnerability Database (NVD) into a single, highly-structured Excel spreadsheet.
 
+> **Spelling note:** The GitHub repository name keeps the historical `Convertor` / `XSLX` spellings. Preferred English spellings are **Converter** and **XLSX** (as used throughout this README and the scripts).
+
 ## ✨ Features
 
 - 📥 **Automated Data Fetching**: Scrapes and downloads all CVE 2.0 JSON feeds (2002–Present).

@@ -7,7 +7,7 @@ downloads them, and extracts the JSON files for processing.
 Features:
 - Skip historical yearly files if already present.
 - Always fetch 'modified' and 'recent' feeds for latest updates.
-- Robust error handling and User-Agent spoofing for WAF bypass.
+- Robust error handling with a descriptive User-Agent.
 """
 
 import requests
@@ -19,6 +19,11 @@ from pathlib import Path
 BASE_URL = "https://nvd.nist.gov"
 FEEDS_URL = "https://nvd.nist.gov/vuln/data-feeds"
 TARGET_DIR = Path(__file__).parent / "nvd_data"
+USER_AGENT = (
+    "NIST-NVD-CVE-2.0-Converter/1.0 "
+    "(+https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX; "
+    "research/data-pipeline)"
+)
 
 def download_and_extract_feeds():
     """
@@ -32,7 +37,8 @@ def download_and_extract_feeds():
 
     print(f"Fetching feeds list from {FEEDS_URL}...")
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     try:
         response = requests.get(FEEDS_URL, headers=headers, timeout=30)
