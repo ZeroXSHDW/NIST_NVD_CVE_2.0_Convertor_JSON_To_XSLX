@@ -132,6 +132,18 @@ def test_extract_zip_safely_empty_and_corrupt(tmp_path):
     assert (dest / "nvdcve-2.0-2024.json").is_file()
 
 
+def test_extract_zip_safely_rejects_path_traversal(tmp_path):
+    dest = tmp_path / "out"
+    dest.mkdir()
+    archive = tmp_path / "path-traversal.zip"
+    outside = tmp_path / "outside.json"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("../outside.json", "should not be written")
+
+    assert extract_zip_safely(archive, dest) is False
+    assert not outside.exists()
+
+
 def test_load_vulnerabilities_empty_and_invalid(tmp_path):
     empty_feed = tmp_path / "nvdcve-2.0-2024.json"
     empty_feed.write_text('{"vulnerabilities": []}', encoding="utf-8")

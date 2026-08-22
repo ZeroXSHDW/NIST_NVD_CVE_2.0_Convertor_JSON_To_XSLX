@@ -10,10 +10,10 @@ Features:
 - Robust error handling with a descriptive User-Agent.
 """
 
-import requests
 from bs4 import BeautifulSoup
 import zipfile
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 # --- Configuration ---
 BASE_URL = "https://nvd.nist.gov"
@@ -54,6 +54,13 @@ def extract_zip_safely(zip_path: Path, dest_dir: Path) -> bool:
             names = z.namelist()
             if not names:
                 return False
+            destination = dest_dir.resolve()
+            for member in z.infolist():
+                member_path = (dest_dir / member.filename).resolve()
+                try:
+                    member_path.relative_to(destination)
+                except ValueError:
+                    return False
             z.extractall(dest_dir)
         return True
     except (zipfile.BadZipFile, OSError):
@@ -76,13 +83,14 @@ def download_and_extract_feeds():
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     try:
-        response = requests.get(FEEDS_URL, headers=headers, timeout=30)
-        response.raise_for_status()
+        request = Request(FEEDS_URL, headers=headers)
+        with urlopen(request, timeout=30) as response:
+            feeds_html = response.read().decode("utf-8", errors="replace")
     except Exception as e:
         print(f"Error fetching the feeds page: {e}")
         return False
 
-    links = collect_feed_links(response.text)
+    links = collect_feed_links(feeds_html)
     if not links:
         print("No CVE 2.0 JSON ZIP feeds found on the page.")
         return False
@@ -106,11 +114,11 @@ def download_and_extract_feeds():
 
         print(f"↓ Downloading {zip_name}...", end=" ", flush=True)
         try:
-            r = requests.get(url, headers=headers, stream=True, timeout=60)
-            r.raise_for_status()
-
-            with open(local_zip_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
+            request = Request(url, headers=headers)
+            with urlopen(request, timeout=60) as response, open(
+                local_zip_path, "wb"
+            ) as f:
+                while chunk := response.read(8192):
                     f.write(chunk)
 
             if not extract_zip_safely(local_zip_path, TARGET_DIR):
