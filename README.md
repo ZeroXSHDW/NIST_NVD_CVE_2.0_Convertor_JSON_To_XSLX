@@ -102,3 +102,17 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ## Security
 
 Report vulnerabilities privately using [SECURITY.md](SECURITY.md). Do not include NVD credentials, private fixtures, or sensitive scan data in public issues.
+
+## Deployment
+
+The converter is a local or controlled batch utility; CI verifies the package
+without downloading the live NVD feed. Publish generated workbooks only to an
+approved destination after reviewing the input snapshot and output contents.
+
+## Troubleshooting
+
+- Run `python -m pip check` when imports fail after an environment change.
+- Use the fixture-backed tests to isolate parser or workbook regressions
+  without depending on live NVD availability.
+- Treat rate limits, network failures, and malformed feeds as operational
+  inputs to diagnose rather than reasons to weaken validation.
