@@ -98,3 +98,7 @@ python -m pytest tests/ -q
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## Security
+
+Report vulnerabilities privately using [SECURITY.md](SECURITY.md). Do not include NVD credentials, private fixtures, or sensitive scan data in public issues.
