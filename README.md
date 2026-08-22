@@ -1,6 +1,6 @@
 # NIST NVD CVE 2.0 to XLSX Converter
 
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![NVD Feed](https://img.shields.io/badge/NVD-CVE_2.0-orange.svg)](https://nvd.nist.gov/vuln/data-feeds)
 
@@ -77,6 +77,19 @@ The generated `NIST_CVE_Compiled.xlsx` includes:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Verification
+
+The CI gate installs the pinned development requirements, checks dependency
+consistency, compiles every pipeline entry point, and runs the fixture-backed
+unit suite without downloading the NVD feed. Run the same checks locally with:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pip check
+python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
+python -m pytest tests/ -q
+```
 
 ## License
 
