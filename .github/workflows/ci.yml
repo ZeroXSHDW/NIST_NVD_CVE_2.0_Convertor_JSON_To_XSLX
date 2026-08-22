@@ -22,6 +22,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
           python -m pip check
+          python -m pip_audit --progress-spinner off
       - name: Syntax check
         run: python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
       - name: Unit tests

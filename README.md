@@ -91,6 +91,7 @@ unit suite without downloading the NVD feed. Run the same checks locally with:
 ```bash
 python -m pip install -r requirements-dev.txt
 python -m pip check
+python -m pip_audit --progress-spinner off
 python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
 python -m pytest tests/ -q
 ```
