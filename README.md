@@ -132,7 +132,12 @@ python -m pip check
 python -m pip_audit --progress-spinner off
 python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
 python -m pytest tests/ -q
+git diff --check
 ```
+
+The final diff check rejects whitespace errors and unresolved conflict markers
+before review. Keep generated feeds and workbooks out of commits unless the
+change explicitly documents the reviewed input snapshot and output purpose.
 
 ## License
 

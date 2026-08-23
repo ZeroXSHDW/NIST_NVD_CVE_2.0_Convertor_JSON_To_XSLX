@@ -20,6 +20,9 @@ The following is a set of guidelines for contributing to this project. These are
 - Ensure the project continues to work on Windows, macOS, and Linux.
 - Update the `README.md` if your change affects usage.
 - Follow the existing code style (PEP 8).
+- Run the documented dependency, compile, test, and `git diff --check` gates.
+- Add a regression test for every repaired parser, feed, workbook, or pipeline contract.
+- Do not commit generated feeds, workbooks, private fixtures, or credentials.
 
 ## Styleguide
 - Use 4 spaces for indentation.

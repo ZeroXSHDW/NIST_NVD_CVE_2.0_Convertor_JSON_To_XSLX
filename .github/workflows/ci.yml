@@ -36,3 +36,5 @@ jobs:
         run: python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
       - name: Unit tests
         run: python -m pytest tests/ -q
+      - name: Check patch hygiene
+        run: git diff --check

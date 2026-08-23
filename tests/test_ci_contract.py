@@ -12,6 +12,7 @@ def test_ci_uses_the_reviewed_hash_locked_dependency_graph():
     assert "python -m pip install --require-hashes -r requirements-ci.txt" in workflow
     assert "pip install --upgrade pip" not in workflow
     assert "-r requirements.txt" not in workflow
+    assert "git diff --check" in workflow
     assert "--hash=sha256:" in lockfile
     assert "-r requirements-ci.txt" in dev_requirements
     for package in ("beautifulsoup4", "openpyxl", "pip-audit", "pytest"):
@@ -35,3 +36,4 @@ def test_readme_documents_the_operational_contract():
     assert "credential-free batch utility" in readme
     assert "python /path/to/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX/run_pipeline.py" in readme
     assert "NIST_CVE_Compiled.xlsx" in readme
+    assert "git diff --check" in readme
