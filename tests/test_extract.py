@@ -111,6 +111,20 @@ def test_collect_feed_links_empty_and_relative(tmp_path):
     assert any(link.endswith("nvdcve-2.0-2024.json.zip") for link in links)
 
 
+def test_collect_feed_links_rejects_untrusted_hosts_and_query_urls():
+    html = """
+    <a href="https://evil.example/nvdcve-2.0-2024.json.zip">evil</a>
+    <a href="http://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2024.json.zip">http</a>
+    <a href="//evil.example/nvdcve-2.0-2024.json.zip">protocol-relative</a>
+    <a href="/feeds/json/cve/2.0/nvdcve-2.0-2024.json.zip?download=1">query</a>
+    <a href="/feeds/json/cve/2.0/nvdcve-2.0-not-a-feed.json.zip">invalid-name</a>
+    <a href="/feeds/json/cve/2.0/nvdcve-2.0-recent.json.zip">recent</a>
+    """
+    assert collect_feed_links(html) == [
+        "https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-recent.json.zip"
+    ]
+
+
 def test_extract_zip_safely_empty_and_corrupt(tmp_path):
     dest = tmp_path / "out"
     dest.mkdir()
@@ -200,3 +214,54 @@ def test_build_workbook_empty_dir_and_empty_feed(tmp_path):
         assert wb2["2024"].cell(4, 1).value == "CVE-2024-42"
     finally:
         wb2.close()
+
+
+def test_build_workbook_keeps_formula_like_imports_as_literal_text(tmp_path):
+    data_dir = tmp_path / "feeds"
+    data_dir.mkdir()
+    (data_dir / "nvdcve-2.0-2024.json").write_text(
+        json.dumps(
+            {
+                "vulnerabilities": [
+                    {
+                        "cve": {
+                            "id": "@CVE-2024-42",
+                            "descriptions": [
+                                {
+                                    "lang": "en",
+                                    "value": '=HYPERLINK("https://evil.example")',
+                                }
+                            ],
+                            "published": "+unsafe",
+                            "lastModified": "-unsafe",
+                            "metrics": {
+                                "cvssMetricV31": [
+                                    {
+                                        "type": "Primary",
+                                        "cvssData": {
+                                            "baseScore": "=1+1",
+                                            "baseSeverity": "@HIGH",
+                                            "vectorString": "+VECTOR",
+                                        },
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    output = tmp_path / "formula-safe.xlsx"
+    build_workbook(data_dir=data_dir, output_file=output)
+
+    wb = load_workbook(output, data_only=False)
+    try:
+        row = wb["2024"][2]
+        assert [cell.data_type for cell in row] == ["s"] * 7
+        assert row[1].value == '=HYPERLINK("https://evil.example")'
+        assert wb["INDEX"].cell(2, 5).data_type == "s"
+        assert wb["INDEX"].cell(2, 5).value == '=HYPERLINK("https://evil.example")'
+    finally:
+        wb.close()

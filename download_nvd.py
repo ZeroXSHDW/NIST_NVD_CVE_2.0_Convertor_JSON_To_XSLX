@@ -10,10 +10,13 @@ Features:
 - Robust error handling with a descriptive User-Agent.
 """
 
-from bs4 import BeautifulSoup
+import re
 import zipfile
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
+
+from bs4 import BeautifulSoup
 
 # --- Configuration ---
 BASE_URL = "https://nvd.nist.gov"
@@ -24,21 +27,37 @@ USER_AGENT = (
     "(+https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX; "
     "research/data-pipeline)"
 )
+FEED_FILENAME = re.compile(r"^nvdcve-2\.0-(?:\d{4}|modified|recent)\.json\.zip$")
 
 
 def collect_feed_links(html: str, base_url: str = BASE_URL) -> list[str]:
-    """Parse feed page HTML and return unique CVE 2.0 JSON ZIP URLs."""
+    """Parse the NVD feed page and return only approved HTTPS feed URLs."""
     if not html or not html.strip():
+        return []
+
+    base = urlparse(base_url)
+    allowed_host = base.netloc.lower()
+    if base.scheme != "https" or not allowed_host:
         return []
 
     soup = BeautifulSoup(html, "html.parser")
     links: list[str] = []
     for link in soup.find_all("a", href=True):
         href = link["href"]
-        if "nvdcve-2.0-" in href and href.endswith(".json.zip"):
-            if not href.startswith("http"):
-                href = f"{base_url.rstrip('/')}/{href.lstrip('/')}"
-            links.append(href)
+        if not isinstance(href, str):
+            continue
+        candidate = urljoin(f"{base_url.rstrip('/')}/", href)
+        parsed = urlparse(candidate)
+        filename = Path(parsed.path).name
+        if (
+            parsed.scheme == "https"
+            and parsed.netloc.lower() == allowed_host
+            and not parsed.params
+            and not parsed.query
+            and not parsed.fragment
+            and FEED_FILENAME.fullmatch(filename)
+        ):
+            links.append(candidate)
     return sorted(set(links))
 
 

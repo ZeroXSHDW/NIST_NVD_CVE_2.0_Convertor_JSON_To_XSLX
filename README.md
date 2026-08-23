@@ -21,6 +21,11 @@ updates promptly.
 - **Integrity verification**: Validates the workbook against source JSON.
 - **Automation ready**: Suitable for CI/CD and scheduled runs.
 
+Feed discovery accepts only HTTPS links on the NVD host with the expected feed
+filename pattern. Imported CVE text is written as literal Excel cells so
+formula-like descriptions or identifiers cannot become executable workbook
+formulas.
+
 ## Architecture
 
 ```mermaid

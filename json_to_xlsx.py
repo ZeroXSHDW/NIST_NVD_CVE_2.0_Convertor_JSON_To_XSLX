@@ -35,10 +35,21 @@ INDEX_COLUMNS = [
     ('summary', 'Summary (Short Description)'),
 ]
 
+FORMULA_PREFIXES = ('=', '+', '-', '@')
+
+
+def write_cell(cell, value):
+    """Write imported text as a literal cell, never an executable formula."""
+    cell.value = value
+    if isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
+        cell.data_type = 's'
+
+
 def clean_text(text):
     if not isinstance(text, str):
         return str(text or '')
     return text.replace('\r\n', '\n').replace('\n\r', '\n').replace('\r', '\n')
+
 
 def extract_entry(cve_entry):
     if not isinstance(cve_entry, dict):
@@ -157,7 +168,7 @@ def build_workbook(data_dir: Path = DATA_DIR, output_file: Path = OUTPUT_FILE) -
         print(f"Processing {year}...")
         ws = wb.create_sheet(title=year)
         for col_idx, (_, header) in enumerate(COLUMNS, start=1):
-            ws.cell(row=1, column=col_idx, value=header)
+            write_cell(ws.cell(row=1, column=col_idx), header)
 
         vulns = load_vulnerabilities(json_path)
         row_num = 2
@@ -167,7 +178,7 @@ def build_workbook(data_dir: Path = DATA_DIR, output_file: Path = OUTPUT_FILE) -
             cve_entry = vuln.get('cve')
             extracted = extract_entry(cve_entry if isinstance(cve_entry, dict) else {})
             for col_idx, (key, _) in enumerate(COLUMNS, start=1):
-                ws.cell(row=row_num, column=col_idx, value=extracted.get(key, ''))
+                write_cell(ws.cell(row=row_num, column=col_idx), extracted.get(key, ''))
 
             summary = extracted['description'][:200] + (
                 '...' if len(extracted['description']) > 200 else ''
@@ -187,13 +198,13 @@ def build_workbook(data_dir: Path = DATA_DIR, output_file: Path = OUTPUT_FILE) -
     print("Creating Master INDEX sheet...")
     idx_ws = wb.create_sheet(title='INDEX', index=0)
     for col_idx, (_, header) in enumerate(INDEX_COLUMNS, start=1):
-        idx_ws.cell(row=1, column=col_idx, value=header)
+        write_cell(idx_ws.cell(row=1, column=col_idx), header)
 
     master_index.sort(key=lambda x: x['cve_id'], reverse=True)
 
     for row_num, entry in enumerate(master_index, start=2):
         for col_idx, (key, _) in enumerate(INDEX_COLUMNS, start=1):
-            idx_ws.cell(row=row_num, column=col_idx, value=entry.get(key, ''))
+            write_cell(idx_ws.cell(row=row_num, column=col_idx), entry.get(key, ''))
 
     for col_idx, (key, header) in enumerate(INDEX_COLUMNS, start=1):
         idx_ws.column_dimensions[get_column_letter(col_idx)].width = max(len(header), 15)
