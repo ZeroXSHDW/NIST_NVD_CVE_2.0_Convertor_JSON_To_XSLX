@@ -12,7 +12,12 @@ from openpyxl import load_workbook
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from download_nvd import collect_feed_links, download_response_atomically, extract_zip_safely  # noqa: E402
+import download_nvd  # noqa: E402
+from download_nvd import (  # noqa: E402
+    collect_feed_links,
+    download_response_atomically,
+    extract_zip_safely,
+)
 from json_to_xlsx import (  # noqa: E402
     build_workbook,
     clean_text,
@@ -184,6 +189,25 @@ def test_download_response_atomically_replaces_after_success(tmp_path):
 
     assert destination.read_bytes() == b"complete archive"
     assert list(tmp_path.glob(".feed.zip.*.part")) == []
+
+
+def test_downloader_removes_corrupt_final_archive(monkeypatch, tmp_path):
+    target_dir = tmp_path / "nvd_data"
+    feed_name = "nvdcve-2.0-2024.json.zip"
+    feed_url = f"https://nvd.nist.gov/feeds/json/cve/2.0/{feed_name}"
+    feed_page = f'<a href="{feed_url}">2024</a>'.encode()
+    responses = iter([io.BytesIO(feed_page), io.BytesIO(b"not-a-zip")])
+
+    monkeypatch.setattr(download_nvd, "TARGET_DIR", target_dir)
+    monkeypatch.setattr(
+        download_nvd,
+        "urlopen",
+        lambda *args, **kwargs: next(responses),
+    )
+
+    assert download_nvd.download_and_extract_feeds() is False
+    assert not (target_dir / feed_name).exists()
+    assert list(target_dir.glob("*.part")) == []
 
 
 def test_load_vulnerabilities_empty_and_invalid(tmp_path):

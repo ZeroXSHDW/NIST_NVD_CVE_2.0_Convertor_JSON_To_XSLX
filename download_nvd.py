@@ -165,6 +165,7 @@ def download_and_extract_feeds():
                 download_response_atomically(response, local_zip_path)
 
             if not extract_zip_safely(local_zip_path, TARGET_DIR):
+                local_zip_path.unlink(missing_ok=True)
                 print("Failed! Error: empty or corrupt ZIP")
                 continue
 

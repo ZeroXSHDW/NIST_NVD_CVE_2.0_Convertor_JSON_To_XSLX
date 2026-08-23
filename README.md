@@ -52,6 +52,31 @@ python run_pipeline.py
 
 Output workbook: `NIST_CVE_Compiled.xlsx` in the project root.
 
+The orchestrator resolves every stage relative to its own location, so it is
+safe to launch it from another working directory when the output path is
+known:
+
+```bash
+python /path/to/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX/run_pipeline.py
+```
+
+## Runtime configuration and output paths
+
+This is a credential-free batch utility. Feed discovery is restricted to the
+NVD HTTPS host and the expected CVE 2.0 ZIP filename pattern; no NVD API key
+or other secret is required.
+
+| Resource | Location or behavior |
+| :--- | :--- |
+| Feed index | `https://nvd.nist.gov/vuln/data-feeds` |
+| Download and extracted data | `nvd_data/` beside the scripts; historical feeds are reused when both the ZIP and JSON are present, while `modified` and `recent` are refreshed. |
+| Generated workbook | `NIST_CVE_Compiled.xlsx` beside the scripts. |
+| Pipeline arguments | None; run individual stages when a partial or offline workflow is required. |
+
+The CI workflow intentionally uses the fixture-backed tests and does not
+download live NVD data. Generated feeds and workbooks are operational output
+and should be reviewed before publishing or committing them.
+
 ### Optional: unit tests
 
 ```bash
