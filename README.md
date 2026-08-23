@@ -84,12 +84,20 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Verification
 
-The CI gate installs the pinned development requirements, checks dependency
-consistency, compiles every pipeline entry point, and runs the fixture-backed
-unit suite without downloading the NVD feed. Run the same checks locally with:
+The CI gate installs the generated, hash-locked development requirements,
+checks dependency consistency, compiles every pipeline entry point, and runs
+the fixture-backed unit suite without downloading the NVD feed. Refresh the
+lockfile only after reviewing dependency changes:
 
 ```bash
-python -m pip install -r requirements-dev.txt
+uv pip compile requirements-ci.in --python-version 3.12 --universal \
+  --generate-hashes --output-file requirements-ci.txt
+```
+
+Run the same checks locally with:
+
+```bash
+python -m pip install --require-hashes -r requirements-ci.txt
 python -m pip check
 python -m pip_audit --progress-spinner off
 python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
