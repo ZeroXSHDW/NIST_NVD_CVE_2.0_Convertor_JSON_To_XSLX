@@ -50,7 +50,7 @@ Output workbook: `NIST_CVE_Compiled.xlsx` in the project root.
 ### Optional: unit tests
 
 ```bash
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-ci.txt
 python -m pytest tests/ -q
 ```
 
