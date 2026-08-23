@@ -1,5 +1,6 @@
 """Unit tests for json_to_xlsx extract helpers and edge-case feeds."""
 
+import io
 import json
 import sys
 import zipfile
@@ -11,7 +12,7 @@ from openpyxl import load_workbook
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from download_nvd import collect_feed_links, extract_zip_safely  # noqa: E402
+from download_nvd import collect_feed_links, download_response_atomically, extract_zip_safely  # noqa: E402
 from json_to_xlsx import (  # noqa: E402
     build_workbook,
     clean_text,
@@ -156,6 +157,33 @@ def test_extract_zip_safely_rejects_path_traversal(tmp_path):
 
     assert extract_zip_safely(archive, dest) is False
     assert not outside.exists()
+
+
+def test_download_response_atomically_preserves_previous_file_on_failure(tmp_path):
+    destination = tmp_path / "feed.zip"
+    destination.write_bytes(b"previous archive")
+
+    class FailingResponse(io.BytesIO):
+        def read(self, size=-1):
+            if self.tell() > 0:
+                raise OSError("simulated interrupted download")
+            return super().read(size)
+
+    with pytest.raises(OSError, match="interrupted"):
+        download_response_atomically(FailingResponse(b"partial archive"), destination)
+
+    assert destination.read_bytes() == b"previous archive"
+    assert list(tmp_path.glob(".feed.zip.*.part")) == []
+
+
+def test_download_response_atomically_replaces_after_success(tmp_path):
+    destination = tmp_path / "feed.zip"
+    destination.write_bytes(b"previous archive")
+
+    download_response_atomically(io.BytesIO(b"complete archive"), destination)
+
+    assert destination.read_bytes() == b"complete archive"
+    assert list(tmp_path.glob(".feed.zip.*.part")) == []
 
 
 def test_load_vulnerabilities_empty_and_invalid(tmp_path):

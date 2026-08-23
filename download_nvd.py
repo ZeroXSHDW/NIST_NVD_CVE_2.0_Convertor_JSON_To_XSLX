@@ -10,7 +10,9 @@ Features:
 - Robust error handling with a descriptive User-Agent.
 """
 
+import os
 import re
+import tempfile
 import zipfile
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -86,6 +88,31 @@ def extract_zip_safely(zip_path: Path, dest_dir: Path) -> bool:
         return False
 
 
+def download_response_atomically(response, destination: Path) -> None:
+    """Write a downloaded response without exposing a partial final file."""
+
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.",
+        suffix=".part",
+        dir=destination.parent,
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as output:
+            while chunk := response.read(8192):
+                output.write(chunk)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary_name, destination)
+    except Exception:
+        try:
+            os.unlink(temporary_name)
+        except FileNotFoundError:
+            pass
+        raise
+
+
 def download_and_extract_feeds():
     """
     Downloads and extracts all CVE 2.0 JSON ZIP feeds from the NVD website.
@@ -134,11 +161,8 @@ def download_and_extract_feeds():
         print(f"↓ Downloading {zip_name}...", end=" ", flush=True)
         try:
             request = Request(url, headers=headers)
-            with urlopen(request, timeout=60) as response, open(
-                local_zip_path, "wb"
-            ) as f:
-                while chunk := response.read(8192):
-                    f.write(chunk)
+            with urlopen(request, timeout=60) as response:
+                download_response_atomically(response, local_zip_path)
 
             if not extract_zip_safely(local_zip_path, TARGET_DIR):
                 print("Failed! Error: empty or corrupt ZIP")
