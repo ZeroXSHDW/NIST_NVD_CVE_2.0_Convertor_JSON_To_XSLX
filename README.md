@@ -57,6 +57,24 @@ graph TD
     G -->|Result| H{100% Valid?}
 ```
 
+## Prerequisites
+
+- Python 3.10 or newer; CI verifies the reviewed dependency graph with Python 3.12.
+- A virtual environment and enough disk space for the selected NVD ZIP/JSON feeds and generated workbook.
+- HTTPS access to `nvd.nist.gov` only when refreshing live feeds; fixture-backed tests do not require network access.
+- No API key or other credential is required. Treat downloaded feeds and generated workbooks as operational data.
+
+## Installation and setup
+
+Create an isolated environment and install the reviewed dependencies:
+
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install --require-hashes -r requirements-ci.txt
+```
+
+On Windows PowerShell, use `.venv\\Scripts\\python.exe` in place of `.venv/bin/python`. The lockfile includes the verification tools; use `requirements.txt` only when you intentionally need the smaller runtime-only installation. Run the fixture-backed verification suite before downloading live data.
+
 ## Quick Start
 
 ```bash
