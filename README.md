@@ -6,9 +6,10 @@
 
 Toolkit for downloading NIST NVD CVE 2.0 JSON feeds and compiling them into a structured Excel workbook with annual sheets and a master index.
 
-The supported development environment is Python 3.10 or newer. The current
-CI matrix runs Python 3.12 so the verification toolchain receives security
-updates promptly.
+The supported verification environment is Python **3.12**, pinned in
+[`.python-version`](.python-version) and consumed by CI. The code remains
+compatible with Python 3.10 or newer, but the hash-locked dependency graph is
+compiled and verified against the checked-in 3.12 runtime.
 
 > **Spelling note:** The GitHub repository name keeps the historical `Convertor` / `XSLX` spellings. Preferred English spellings are **Converter** and **XLSX** (as used throughout this README and the scripts).
 
@@ -59,6 +60,8 @@ graph TD
 ## Quick Start
 
 ```bash
+# Use the Python version in .python-version when creating a local environment.
+
 # 1. Install runtime dependencies
 python -m pip install -r requirements.txt
 
@@ -94,7 +97,8 @@ or other secret is required.
 | Pipeline arguments | None; run individual stages when a partial or offline workflow is required. |
 
 The CI workflow intentionally uses the fixture-backed tests and does not
-download live NVD data. Generated feeds and workbooks are operational output
+download live NVD data. It reads the exact Python runtime from
+`.python-version`, matching the hash-locked dependency graph. Generated feeds and workbooks are operational output
 and should be reviewed before publishing or committing them.
 
 ### Optional: unit tests
