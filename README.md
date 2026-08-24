@@ -12,6 +12,18 @@ updates promptly.
 
 > **Spelling note:** The GitHub repository name keeps the historical `Convertor` / `XSLX` spellings. Preferred English spellings are **Converter** and **XLSX** (as used throughout this README and the scripts).
 
+## Current release status
+
+As of **2026-08-24**, the `codex/workflow-permissions` maintenance branch is
+under review in [PR #3](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX/pull/3).
+The local CI-equivalent gate is review-ready with **25 fixture-backed tests**,
+hash-locked dependencies, clean `pip check`, a clean `pip-audit`, entry-point
+compilation, and patch-hygiene validation.
+
+This is a review-ready batch utility, not a production data-publication approval.
+The default `main` branch still has five medium Dependabot alerts, and live NVD
+feed availability plus review of generated workbooks remain external release gates.
+
 ## Features
 
 - **Automated data fetching**: Downloads CVE 2.0 JSON feeds (2002–present).
@@ -30,7 +42,7 @@ formulas.
 
 ```mermaid
 graph TD
-    A[NIST NVD Website] -->|Scrape| B(download_nvd.py)
+    A[NIST NVD Website] -->|Discover allowlisted feeds| B(download_nvd.py)
     B -->|Download ZIPs| C[nvd_data/ Folder]
     C -->|Extract| D[JSON Files]
     D -->|Process| E(json_to_xlsx.py)
@@ -42,8 +54,11 @@ graph TD
 ## Quick Start
 
 ```bash
-# 1. Install runtime deps
-pip install -r requirements.txt
+# 1. Install runtime dependencies
+python -m pip install -r requirements.txt
+
+# For the complete reproducible verification environment, use the reviewed lock:
+python -m pip install --require-hashes -r requirements-ci.txt
 
 # 2. Run the full pipeline (download → convert → validate)
 #    Note: run_pipeline.py takes no CLI flags; it runs all three stages in order.
