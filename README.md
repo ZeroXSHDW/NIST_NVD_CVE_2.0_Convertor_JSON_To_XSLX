@@ -24,6 +24,11 @@ This is a review-ready batch utility, not a production data-publication approval
 The default `main` branch still has five medium Dependabot alerts, and live NVD
 feed availability plus review of generated workbooks remain external release gates.
 
+The CI job uses a fixed Ubuntu 24.04 runner, while the Python 3.12 dependency
+graph remains hash-locked; this keeps the local and hosted verification contract
+reproducible without treating a hosted run as available when account billing
+blocks execution.
+
 ## Features
 
 - **Automated data fetching**: Downloads CVE 2.0 JSON feeds (2002–present).
