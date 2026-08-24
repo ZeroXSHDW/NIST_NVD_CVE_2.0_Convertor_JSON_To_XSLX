@@ -36,6 +36,9 @@ def test_readme_documents_the_operational_contract():
 
     for heading in (
         "## Architecture",
+        "## Features",
+        "## Prerequisites",
+        "## Installation and setup",
         "## Quick Start",
         "## Runtime configuration and output paths",
         "## Verification",
@@ -46,6 +49,8 @@ def test_readme_documents_the_operational_contract():
         assert heading in readme
 
     assert "credential-free batch utility" in readme
+    assert "python -m venv .venv" in readme
+    assert ".venv/bin/python -m pip install --require-hashes -r requirements-ci.txt" in readme
     assert "python /path/to/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX/run_pipeline.py" in readme
     assert "NIST_CVE_Compiled.xlsx" in readme
     assert "fail-closed" in readme
