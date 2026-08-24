@@ -1,12 +1,34 @@
 # NIST NVD CVE 2.0 to XLSX Converter
 
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![NVD Feed](https://img.shields.io/badge/NVD-CVE_2.0-orange.svg)](https://nvd.nist.gov/vuln/data-feeds)
 
 Toolkit for downloading NIST NVD CVE 2.0 JSON feeds and compiling them into a structured Excel workbook with annual sheets and a master index.
 
+The supported verification environment is Python **3.12**, pinned in
+[`.python-version`](.python-version) and consumed by CI. The code remains
+compatible with Python 3.10 or newer, but the hash-locked dependency graph is
+compiled and verified against the checked-in 3.12 runtime.
+
 > **Spelling note:** The GitHub repository name keeps the historical `Convertor` / `XSLX` spellings. Preferred English spellings are **Converter** and **XLSX** (as used throughout this README and the scripts).
+
+## Current release status
+
+As of **2026-08-24**, the `codex/workflow-permissions` maintenance branch is
+under review in [PR #3](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX/pull/3).
+The local CI-equivalent gate is review-ready with **25 fixture-backed tests**,
+hash-locked dependencies, clean `pip check`, a clean `pip-audit`, entry-point
+compilation, and patch-hygiene validation.
+
+This is a review-ready batch utility, not a production data-publication approval.
+The default `main` branch still has five medium Dependabot alerts, and live NVD
+feed availability plus review of generated workbooks remain external release gates.
+
+The CI job uses a fixed Ubuntu 24.04 runner, while the Python 3.12 dependency
+graph remains hash-locked; this keeps the local and hosted verification contract
+reproducible without treating a hosted run as available when account billing
+blocks execution.
 
 ## Features
 
@@ -17,11 +39,16 @@ Toolkit for downloading NIST NVD CVE 2.0 JSON feeds and compiling them into a st
 - **Integrity verification**: Validates the workbook against source JSON.
 - **Automation ready**: Suitable for CI/CD and scheduled runs.
 
+Feed discovery accepts only HTTPS links on the NVD host with the expected feed
+filename pattern. Imported CVE text is written as literal Excel cells so
+formula-like descriptions or identifiers cannot become executable workbook
+formulas.
+
 ## Architecture
 
 ```mermaid
 graph TD
-    A[NIST NVD Website] -->|Scrape| B(download_nvd.py)
+    A[NIST NVD Website] -->|Discover allowlisted feeds| B(download_nvd.py)
     B -->|Download ZIPs| C[nvd_data/ Folder]
     C -->|Extract| D[JSON Files]
     D -->|Process| E(json_to_xlsx.py)
@@ -30,11 +57,34 @@ graph TD
     G -->|Result| H{100% Valid?}
 ```
 
+## Prerequisites
+
+- Python 3.10 or newer; CI verifies the reviewed dependency graph with Python 3.12.
+- A virtual environment and enough disk space for the selected NVD ZIP/JSON feeds and generated workbook.
+- HTTPS access to `nvd.nist.gov` only when refreshing live feeds; fixture-backed tests do not require network access.
+- No API key or other credential is required. Treat downloaded feeds and generated workbooks as operational data.
+
+## Installation and setup
+
+Create an isolated environment and install the reviewed dependencies:
+
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install --require-hashes -r requirements-ci.txt
+```
+
+On Windows PowerShell, use `.venv\\Scripts\\python.exe` in place of `.venv/bin/python`. The lockfile includes the verification tools; use `requirements.txt` only when you intentionally need the smaller runtime-only installation. Run the fixture-backed verification suite before downloading live data.
+
 ## Quick Start
 
 ```bash
-# 1. Install runtime deps
-pip install -r requirements.txt
+# Use the Python version in .python-version when creating a local environment.
+
+# 1. Install runtime dependencies
+python -m pip install -r requirements.txt
+
+# For the complete reproducible verification environment, use the reviewed lock:
+python -m pip install --require-hashes -r requirements-ci.txt
 
 # 2. Run the full pipeline (download → convert → validate)
 #    Note: run_pipeline.py takes no CLI flags; it runs all three stages in order.
@@ -43,10 +93,36 @@ python run_pipeline.py
 
 Output workbook: `NIST_CVE_Compiled.xlsx` in the project root.
 
+The orchestrator resolves every stage relative to its own location, so it is
+safe to launch it from another working directory when the output path is
+known:
+
+```bash
+python /path/to/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX/run_pipeline.py
+```
+
+## Runtime configuration and output paths
+
+This is a credential-free batch utility. Feed discovery is restricted to the
+NVD HTTPS host and the expected CVE 2.0 ZIP filename pattern; no NVD API key
+or other secret is required.
+
+| Resource | Location or behavior |
+| :--- | :--- |
+| Feed index | `https://nvd.nist.gov/vuln/data-feeds` |
+| Download and extracted data | `nvd_data/` beside the scripts; historical feeds are reused when both the ZIP and JSON are present, while `modified` and `recent` are refreshed. |
+| Generated workbook | `NIST_CVE_Compiled.xlsx` beside the scripts. |
+| Pipeline arguments | None; run individual stages when a partial or offline workflow is required. |
+
+The CI workflow intentionally uses the fixture-backed tests and does not
+download live NVD data. It reads the exact Python runtime from
+`.python-version`, matching the hash-locked dependency graph. Generated feeds and workbooks are operational output
+and should be reviewed before publishing or committing them.
+
 ### Optional: unit tests
 
 ```bash
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-ci.txt
 python -m pytest tests/ -q
 ```
 
@@ -78,6 +154,53 @@ The generated `NIST_CVE_Compiled.xlsx` includes:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Verification
+
+The CI gate installs the generated, hash-locked development requirements,
+checks dependency consistency, compiles every pipeline entry point, and runs
+the fixture-backed unit suite without downloading the NVD feed. The validator
+is fail-closed: it compares annual-sheet and `INDEX` row counts, headers, and
+values against the source JSON, and returns a non-zero status for missing or
+truncated output. Refresh the lockfile only after reviewing dependency changes:
+
+```bash
+uv pip compile requirements-ci.in --python-version 3.12 --universal \
+  --generate-hashes --output-file requirements-ci.txt
+```
+
+Run the same checks locally with:
+
+```bash
+python -m pip install --require-hashes -r requirements-ci.txt
+python -m pip check
+python -m pip_audit --progress-spinner off
+python -m py_compile download_nvd.py json_to_xlsx.py validate_xlsx.py run_pipeline.py
+python -m pytest tests/ -q
+git diff --check
+```
+
+The final diff check rejects whitespace errors and unresolved conflict markers
+before review. Keep generated feeds and workbooks out of commits unless the
+change explicitly documents the reviewed input snapshot and output purpose.
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## Security
+
+Report vulnerabilities privately using [SECURITY.md](SECURITY.md). Do not include NVD credentials, private fixtures, or sensitive scan data in public issues.
+
+## Deployment
+
+The converter is a local or controlled batch utility; CI verifies the package
+without downloading the live NVD feed. Publish generated workbooks only to an
+approved destination after reviewing the input snapshot and output contents.
+
+## Troubleshooting
+
+- Run `python -m pip check` when imports fail after an environment change.
+- Use the fixture-backed tests to isolate parser or workbook regressions
+  without depending on live NVD availability.
+- Treat rate limits, network failures, and malformed feeds as operational
+  inputs to diagnose rather than reasons to weaken validation.

@@ -1,5 +1,6 @@
 """Unit tests for json_to_xlsx extract helpers and edge-case feeds."""
 
+import io
 import json
 import sys
 import zipfile
@@ -11,7 +12,12 @@ from openpyxl import load_workbook
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from download_nvd import collect_feed_links, extract_zip_safely  # noqa: E402
+import download_nvd  # noqa: E402
+from download_nvd import (  # noqa: E402
+    collect_feed_links,
+    download_response_atomically,
+    extract_zip_safely,
+)
 from json_to_xlsx import (  # noqa: E402
     build_workbook,
     clean_text,
@@ -111,6 +117,20 @@ def test_collect_feed_links_empty_and_relative(tmp_path):
     assert any(link.endswith("nvdcve-2.0-2024.json.zip") for link in links)
 
 
+def test_collect_feed_links_rejects_untrusted_hosts_and_query_urls():
+    html = """
+    <a href="https://evil.example/nvdcve-2.0-2024.json.zip">evil</a>
+    <a href="http://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2024.json.zip">http</a>
+    <a href="//evil.example/nvdcve-2.0-2024.json.zip">protocol-relative</a>
+    <a href="/feeds/json/cve/2.0/nvdcve-2.0-2024.json.zip?download=1">query</a>
+    <a href="/feeds/json/cve/2.0/nvdcve-2.0-not-a-feed.json.zip">invalid-name</a>
+    <a href="/feeds/json/cve/2.0/nvdcve-2.0-recent.json.zip">recent</a>
+    """
+    assert collect_feed_links(html) == [
+        "https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-recent.json.zip"
+    ]
+
+
 def test_extract_zip_safely_empty_and_corrupt(tmp_path):
     dest = tmp_path / "out"
     dest.mkdir()
@@ -130,6 +150,64 @@ def test_extract_zip_safely_empty_and_corrupt(tmp_path):
         zf.writestr("nvdcve-2.0-2024.json", '{"vulnerabilities":[]}')
     assert extract_zip_safely(good, dest) is True
     assert (dest / "nvdcve-2.0-2024.json").is_file()
+
+
+def test_extract_zip_safely_rejects_path_traversal(tmp_path):
+    dest = tmp_path / "out"
+    dest.mkdir()
+    archive = tmp_path / "path-traversal.zip"
+    outside = tmp_path / "outside.json"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("../outside.json", "should not be written")
+
+    assert extract_zip_safely(archive, dest) is False
+    assert not outside.exists()
+
+
+def test_download_response_atomically_preserves_previous_file_on_failure(tmp_path):
+    destination = tmp_path / "feed.zip"
+    destination.write_bytes(b"previous archive")
+
+    class FailingResponse(io.BytesIO):
+        def read(self, size=-1):
+            if self.tell() > 0:
+                raise OSError("simulated interrupted download")
+            return super().read(size)
+
+    with pytest.raises(OSError, match="interrupted"):
+        download_response_atomically(FailingResponse(b"partial archive"), destination)
+
+    assert destination.read_bytes() == b"previous archive"
+    assert list(tmp_path.glob(".feed.zip.*.part")) == []
+
+
+def test_download_response_atomically_replaces_after_success(tmp_path):
+    destination = tmp_path / "feed.zip"
+    destination.write_bytes(b"previous archive")
+
+    download_response_atomically(io.BytesIO(b"complete archive"), destination)
+
+    assert destination.read_bytes() == b"complete archive"
+    assert list(tmp_path.glob(".feed.zip.*.part")) == []
+
+
+def test_downloader_removes_corrupt_final_archive(monkeypatch, tmp_path):
+    target_dir = tmp_path / "nvd_data"
+    feed_name = "nvdcve-2.0-2024.json.zip"
+    feed_url = f"https://nvd.nist.gov/feeds/json/cve/2.0/{feed_name}"
+    feed_page = f'<a href="{feed_url}">2024</a>'.encode()
+    responses = iter([io.BytesIO(feed_page), io.BytesIO(b"not-a-zip")])
+
+    monkeypatch.setattr(download_nvd, "TARGET_DIR", target_dir)
+    monkeypatch.setattr(
+        download_nvd,
+        "urlopen",
+        lambda *args, **kwargs: next(responses),
+    )
+
+    assert download_nvd.download_and_extract_feeds() is False
+    assert not (target_dir / feed_name).exists()
+    assert list(target_dir.glob("*.part")) == []
 
 
 def test_load_vulnerabilities_empty_and_invalid(tmp_path):
@@ -188,3 +266,54 @@ def test_build_workbook_empty_dir_and_empty_feed(tmp_path):
         assert wb2["2024"].cell(4, 1).value == "CVE-2024-42"
     finally:
         wb2.close()
+
+
+def test_build_workbook_keeps_formula_like_imports_as_literal_text(tmp_path):
+    data_dir = tmp_path / "feeds"
+    data_dir.mkdir()
+    (data_dir / "nvdcve-2.0-2024.json").write_text(
+        json.dumps(
+            {
+                "vulnerabilities": [
+                    {
+                        "cve": {
+                            "id": "@CVE-2024-42",
+                            "descriptions": [
+                                {
+                                    "lang": "en",
+                                    "value": '=HYPERLINK("https://evil.example")',
+                                }
+                            ],
+                            "published": "+unsafe",
+                            "lastModified": "-unsafe",
+                            "metrics": {
+                                "cvssMetricV31": [
+                                    {
+                                        "type": "Primary",
+                                        "cvssData": {
+                                            "baseScore": "=1+1",
+                                            "baseSeverity": "@HIGH",
+                                            "vectorString": "+VECTOR",
+                                        },
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    output = tmp_path / "formula-safe.xlsx"
+    build_workbook(data_dir=data_dir, output_file=output)
+
+    wb = load_workbook(output, data_only=False)
+    try:
+        row = wb["2024"][2]
+        assert [cell.data_type for cell in row] == ["s"] * 7
+        assert row[1].value == '=HYPERLINK("https://evil.example")'
+        assert wb["INDEX"].cell(2, 5).data_type == "s"
+        assert wb["INDEX"].cell(2, 5).value == '=HYPERLINK("https://evil.example")'
+    finally:
+        wb.close()

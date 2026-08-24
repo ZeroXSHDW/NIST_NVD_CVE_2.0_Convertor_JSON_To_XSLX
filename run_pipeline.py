@@ -1,61 +1,63 @@
-"""
-NIST CVE Data Pipeline Orchestrator
-------------------------------------
-A master controller script that sequentially runs the download,
-conversion, and validation stages of the NIST CVE Data Repository.
-"""
+"""Run the NVD download, conversion, and validation stages in order."""
 
-import sys
+from __future__ import annotations
+
 import subprocess
+import sys
 from pathlib import Path
 
-def run_command(command, description):
-    """Utility to run a command and report status."""
-    print(f"\n{'='*60}")
+PROJECT_ROOT = Path(__file__).resolve().parent
+STAGES: tuple[tuple[str, str], ...] = (
+    ("download_nvd.py", "Downloading and Extracting NIST Data Feeds"),
+    ("json_to_xlsx.py", "Converting JSON Feeds to Master XLSX"),
+    ("validate_xlsx.py", "Validating XLSX Data Integrity"),
+)
+
+
+def run_command(
+    script_path: Path,
+    description: str,
+    *,
+    project_root: Path = PROJECT_ROOT,
+) -> bool:
+    """Run one pipeline stage with the repository as its working directory."""
+    print(f"\n{'=' * 60}")
     print(f"STEP: {description}")
-    print(f"{'='*60}")
-    
+    print(f"{'=' * 60}")
+
     try:
-        # We use sys.executable to ensure we use the same python interpreter
-        subprocess.run([sys.executable, command], check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"\n❌ FAILED: {description} (Exit code: {e.returncode})")
+        subprocess.run(
+            [sys.executable, str(script_path)],
+            cwd=project_root,
+            check=True,
+        )
+    except subprocess.CalledProcessError as error:
+        print(f"\n❌ FAILED: {description} (Exit code: {error.returncode})")
         return False
-    except Exception as e:
-        print(f"\n❌ ERROR: Unexpected error during {description}: {e}")
+    except OSError as error:
+        print(f"\n❌ ERROR: Could not start {description}: {error}")
         return False
+    return True
 
-def main():
-    """
-    Main orchestrator for the NIST CVE Data Pipeline.
-    1. Download/Extract
-    2. Convert to XLSX
-    3. Validate
-    """
-    project_root = Path(__file__).parent
-    
-    steps = [
-        ("download_nvd.py", "Downloading and Extracting NIST Data Feeds"),
-        ("json_to_xlsx.py", "Converting JSON Feeds to Master XLSX"),
-        ("validate_xlsx.py", "Validating XLSX Data Integrity")
-    ]
-    
-    for script, description in steps:
-        script_path = project_root / script
-        if not script_path.exists():
-            print(f"❌ ERROR: Could not find {script} in {project_root}")
-            sys.exit(1)
-            
-        success = run_command(script, description)
-        if not success:
-            print(f"\n🛑 Pipeline halted due to error in {script}.")
-            sys.exit(1)
 
-    print(f"\n{'='*60}")
+def main() -> int:
+    """Run every pipeline stage and return a process exit status."""
+    for script_name, description in STAGES:
+        script_path = PROJECT_ROOT / script_name
+        if not script_path.is_file():
+            print(f"❌ ERROR: Could not find {script_name} in {PROJECT_ROOT}")
+            return 1
+
+        if not run_command(script_path, description):
+            print(f"\n🛑 Pipeline halted due to error in {script_name}.")
+            return 1
+
+    print(f"\n{'=' * 60}")
     print("✅ FULL PIPELINE COMPLETED SUCCESSFULLY!")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print("Final Output: NIST_CVE_Compiled.xlsx is ready for use.")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -10,10 +10,15 @@ Features:
 - Robust error handling with a descriptive User-Agent.
 """
 
-import requests
-from bs4 import BeautifulSoup
+import os
+import re
+import tempfile
 import zipfile
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
+from urllib.request import Request, urlopen
+
+from bs4 import BeautifulSoup
 
 # --- Configuration ---
 BASE_URL = "https://nvd.nist.gov"
@@ -24,21 +29,37 @@ USER_AGENT = (
     "(+https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX; "
     "research/data-pipeline)"
 )
+FEED_FILENAME = re.compile(r"^nvdcve-2\.0-(?:\d{4}|modified|recent)\.json\.zip$")
 
 
 def collect_feed_links(html: str, base_url: str = BASE_URL) -> list[str]:
-    """Parse feed page HTML and return unique CVE 2.0 JSON ZIP URLs."""
+    """Parse the NVD feed page and return only approved HTTPS feed URLs."""
     if not html or not html.strip():
+        return []
+
+    base = urlparse(base_url)
+    allowed_host = base.netloc.lower()
+    if base.scheme != "https" or not allowed_host:
         return []
 
     soup = BeautifulSoup(html, "html.parser")
     links: list[str] = []
     for link in soup.find_all("a", href=True):
         href = link["href"]
-        if "nvdcve-2.0-" in href and href.endswith(".json.zip"):
-            if not href.startswith("http"):
-                href = f"{base_url.rstrip('/')}/{href.lstrip('/')}"
-            links.append(href)
+        if not isinstance(href, str):
+            continue
+        candidate = urljoin(f"{base_url.rstrip('/')}/", href)
+        parsed = urlparse(candidate)
+        filename = Path(parsed.path).name
+        if (
+            parsed.scheme == "https"
+            and parsed.netloc.lower() == allowed_host
+            and not parsed.params
+            and not parsed.query
+            and not parsed.fragment
+            and FEED_FILENAME.fullmatch(filename)
+        ):
+            links.append(candidate)
     return sorted(set(links))
 
 
@@ -54,10 +75,42 @@ def extract_zip_safely(zip_path: Path, dest_dir: Path) -> bool:
             names = z.namelist()
             if not names:
                 return False
+            destination = dest_dir.resolve()
+            for member in z.infolist():
+                member_path = (dest_dir / member.filename).resolve()
+                try:
+                    member_path.relative_to(destination)
+                except ValueError:
+                    return False
             z.extractall(dest_dir)
         return True
     except (zipfile.BadZipFile, OSError):
         return False
+
+
+def download_response_atomically(response, destination: Path) -> None:
+    """Write a downloaded response without exposing a partial final file."""
+
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.",
+        suffix=".part",
+        dir=destination.parent,
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as output:
+            while chunk := response.read(8192):
+                output.write(chunk)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary_name, destination)
+    except Exception:
+        try:
+            os.unlink(temporary_name)
+        except FileNotFoundError:
+            pass
+        raise
 
 
 def download_and_extract_feeds():
@@ -76,13 +129,14 @@ def download_and_extract_feeds():
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     try:
-        response = requests.get(FEEDS_URL, headers=headers, timeout=30)
-        response.raise_for_status()
+        request = Request(FEEDS_URL, headers=headers)
+        with urlopen(request, timeout=30) as response:
+            feeds_html = response.read().decode("utf-8", errors="replace")
     except Exception as e:
         print(f"Error fetching the feeds page: {e}")
         return False
 
-    links = collect_feed_links(response.text)
+    links = collect_feed_links(feeds_html)
     if not links:
         print("No CVE 2.0 JSON ZIP feeds found on the page.")
         return False
@@ -106,14 +160,12 @@ def download_and_extract_feeds():
 
         print(f"↓ Downloading {zip_name}...", end=" ", flush=True)
         try:
-            r = requests.get(url, headers=headers, stream=True, timeout=60)
-            r.raise_for_status()
-
-            with open(local_zip_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
+            request = Request(url, headers=headers)
+            with urlopen(request, timeout=60) as response:
+                download_response_atomically(response, local_zip_path)
 
             if not extract_zip_safely(local_zip_path, TARGET_DIR):
+                local_zip_path.unlink(missing_ok=True)
                 print("Failed! Error: empty or corrupt ZIP")
                 continue
 
