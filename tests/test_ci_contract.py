@@ -36,4 +36,6 @@ def test_readme_documents_the_operational_contract():
     assert "credential-free batch utility" in readme
     assert "python /path/to/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX/run_pipeline.py" in readme
     assert "NIST_CVE_Compiled.xlsx" in readme
+    assert "fail-closed" in readme
+    assert "annual-sheet and `INDEX` row counts" in readme
     assert "git diff --check" in readme

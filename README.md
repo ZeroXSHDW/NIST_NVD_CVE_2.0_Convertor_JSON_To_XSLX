@@ -116,8 +116,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 The CI gate installs the generated, hash-locked development requirements,
 checks dependency consistency, compiles every pipeline entry point, and runs
-the fixture-backed unit suite without downloading the NVD feed. Refresh the
-lockfile only after reviewing dependency changes:
+the fixture-backed unit suite without downloading the NVD feed. The validator
+is fail-closed: it compares annual-sheet and `INDEX` row counts, headers, and
+values against the source JSON, and returns a non-zero status for missing or
+truncated output. Refresh the lockfile only after reviewing dependency changes:
 
 ```bash
 uv pip compile requirements-ci.in --python-version 3.12 --universal \
