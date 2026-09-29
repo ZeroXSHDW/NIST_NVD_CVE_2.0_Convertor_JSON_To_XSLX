@@ -5,16 +5,20 @@
   / /|  __/ | | (_) | |_| |  __/\ V / | |___| |__| |___
  /____\___|_|  \___/|____/ \___| \_/  |_____|_____\____|
                     ZeroDev LLC
-             https://ZeroDevLLC.com
+           NIST NVD CVE 2.0 Convertor (JSON → XLSX)
+    https://ZeroDevLLC.com  ·  https://zerodevllc.store
 ```
 
 # NIST NVD CVE 2.0 Convertor (JSON → XLSX)
 
+> **Private repository.** Owner: [ZeroXSHDW](https://github.com/ZeroXSHDW).
+
 **[NIST NVD CVE 2.0 Convertor (JSON → XLSX)](https://ZeroDevLLC.com)** by [ZeroDev LLC](https://ZeroDevLLC.com) · GitHub: [ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX)
 
-> Store / brand: **[https://ZeroDevLLC.com](https://ZeroDevLLC.com)**  
-> Production releases are published on the public-bound repo `NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX`.  
-> Active development uses the private twin [`NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX-dev`](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX-dev).
+> Brand: **[https://ZeroDevLLC.com](https://ZeroDevLLC.com)** · Store: **[https://zerodevllc.store](https://zerodevllc.store)**  
+> Production releases → public-bound `NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX`.  
+> Active development → private twin [`NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX-dev`](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX-dev).
+
 
 ## Screenshots
 
