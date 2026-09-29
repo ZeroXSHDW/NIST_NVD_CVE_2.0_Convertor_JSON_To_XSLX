@@ -1,7 +1,26 @@
-# NIST NVD CVE 2.0 to XLSX Converter
+```
+  ______             ____              _     _     ____
+ |__  /___ _ __ ___ |  _ \  _____   __| |   | |   / ___|
+   / // _ \ '__/ _ \| | | |/ _ \ \ / /| |   | |  | |
+  / /|  __/ | | (_) | |_| |  __/\ V / | |___| |__| |___
+ /____\___|_|  \___/|____/ \___| \_/  |_____|_____\____|
+                    ZeroDev LLC
+             https://ZeroDevLLC.com
+```
 
-**Private repository.** Owner: [ZeroXSHDW](https://github.com/ZeroXSHDW).
+# NIST NVD CVE 2.0 Convertor (JSON → XLSX)
 
+**[NIST NVD CVE 2.0 Convertor (JSON → XLSX)](https://ZeroDevLLC.com)** by [ZeroDev LLC](https://ZeroDevLLC.com) · GitHub: [ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX)
+
+> Store / brand: **[https://ZeroDevLLC.com](https://ZeroDevLLC.com)**  
+> Production releases are published on the public-bound repo `NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX`.  
+> Active development uses the private twin [`NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX-dev`](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX-dev).
+
+## Screenshots
+
+_No product screenshots are checked in yet. Add images under `docs/branding/` (see placeholder note in this PR) and embed them here._
+
+---
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![NVD Feed](https://img.shields.io/badge/NVD-CVE_2.0-orange.svg)](https://nvd.nist.gov/vuln/data-feeds)
