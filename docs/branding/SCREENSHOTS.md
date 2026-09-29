@@ -1,10 +1,11 @@
-# Branding screenshots placeholder
+# Branding screenshots — NIST NVD CVE 2.0 Convertor (JSON → XLSX)
 
-Add product screenshots for **NIST NVD CVE 2.0 Convertor (JSON → XLSX)** here, then embed them in the root `README.md`.
+Assets here come from a **real converter run**, not a mocked UI.
 
-Suggested filenames:
-- `hero.png` — primary product shot
-- `ui-1.png` / `ui-2.png` — key flows
+| File | What it shows | How produced |
+| --- | --- | --- |
+| `sample-NIST_CVE_Compiled.xlsx` | Workbook with `INDEX` + `2024` sheets | `json_to_xlsx.build_workbook()` on `tests/fixtures/sample_cve.json` staged as `nvdcve-2.0-2024.json` |
+| `hero-sample-xlsx.jpg` | Preview of the INDEX sheet rows | Rendered from the real openpyxl workbook cells |
 
 Brand site: https://ZeroDevLLC.com  ·  Store: https://zerodevllc.store
 
