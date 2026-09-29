@@ -11,8 +11,6 @@
 
 # NIST NVD CVE 2.0 Convertor (JSON → XLSX)
 
-> **Private repository.** Owner: [ZeroXSHDW](https://github.com/ZeroXSHDW).
-
 **[NIST NVD CVE 2.0 Convertor (JSON → XLSX)](https://ZeroDevLLC.com)** by [ZeroDev LLC](https://ZeroDevLLC.com) · GitHub: [ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX](https://github.com/ZeroXSHDW/NIST_NVD_CVE_2.0_Convertor_JSON_To_XSLX)
 
 > Brand: **[https://ZeroDevLLC.com](https://ZeroDevLLC.com)** · Store: **[https://zerodevllc.store](https://zerodevllc.store)**  
