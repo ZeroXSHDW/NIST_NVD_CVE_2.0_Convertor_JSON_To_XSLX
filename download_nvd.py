@@ -128,4 +128,5 @@ def download_and_extract_feeds():
 
 
 if __name__ == "__main__":
-    download_and_extract_feeds()
+    import sys
+    sys.exit(0 if download_and_extract_feeds() else 1)

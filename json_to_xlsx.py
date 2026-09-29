@@ -206,7 +206,13 @@ def build_workbook(data_dir: Path = DATA_DIR, output_file: Path = OUTPUT_FILE) -
 
 def main():
     build_workbook()
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
