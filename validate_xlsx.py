@@ -124,8 +124,10 @@ def main():
         for m in mismatches[:10]:
             print(m)
         print(f"Total mismatches: {len(mismatches)}")
-    else:
-        print('All rows match source JSON perfectly.')
+        return 1
+    print('All rows match source JSON perfectly.')
+    return 0
 
 if __name__ == '__main__':
-    main()
+    import sys
+    sys.exit(main() or 0)
