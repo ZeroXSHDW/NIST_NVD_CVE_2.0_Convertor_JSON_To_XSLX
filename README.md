@@ -22,7 +22,13 @@
 
 ## Screenshots
 
-_No product screenshots are checked in yet. Add images under `docs/branding/` (see placeholder note in this PR) and embed them here._
+Sample INDEX sheet rendered from a real workbook produced by `json_to_xlsx.py` against [`tests/fixtures/sample_cve.json`](tests/fixtures/sample_cve.json):
+
+![Sample INDEX sheet from NIST CVE XLSX converter](docs/branding/hero-sample-xlsx.jpg)
+
+The companion sample workbook is checked in at [`docs/branding/sample-NIST_CVE_Compiled.xlsx`](docs/branding/sample-NIST_CVE_Compiled.xlsx).
+
+See [`docs/branding/SCREENSHOTS.md`](docs/branding/SCREENSHOTS.md) for provenance notes.
 
 ---
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
